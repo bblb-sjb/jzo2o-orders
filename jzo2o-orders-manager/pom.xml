@@ -83,11 +83,14 @@
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
+
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
         </dependency>
+
+
         <dependency>
             <groupId>com.jzo2o</groupId>
             <artifactId>jzo2o-xxl-job</artifactId>
@@ -95,6 +98,11 @@
         <dependency>
             <groupId>com.jzo2o</groupId>
             <artifactId>jzo2o-es</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.jzo2o</groupId>
+            <artifactId>jzo2o-sentinel</artifactId>
         </dependency>
 
     </dependencies>

@@ -14,6 +14,7 @@ import com.jzo2o.orders.manager.model.dto.request.OrderPageQueryReqDTO;
 import com.jzo2o.orders.manager.model.dto.request.OrdersPayReqDTO;
 import com.jzo2o.orders.manager.model.dto.request.PlaceOrderReqDTO;
 import com.jzo2o.orders.manager.model.dto.response.OperationOrdersDetailResDTO;
+import com.jzo2o.orders.manager.model.dto.response.OperationOrdersPageResDTO;
 import com.jzo2o.orders.manager.model.dto.response.OrdersPayResDTO;
 import com.jzo2o.orders.manager.model.dto.response.PlaceOrderResDTO;
 
@@ -61,5 +62,21 @@ public interface IOrdersManagerService extends IService<Orders> {
      * @param ordersId 订单id
      */
     void evaluationOrder(Long ordersId);
+    /**
+     * 取消订单
+     *
+     * @param orderCancelDTO 取消订单模型
+     */
+    void cancel(OrderCancelDTO orderCancelDTO);
+
+    /**
+     * 运营端查询订单列表
+     * @param orderPageQueryReqDTO
+     * @return
+     */
+    PageResult<OperationOrdersPageResDTO> operationQueryList(OrderPageQueryReqDTO orderPageQueryReqDTO);
+
+
+
 
 }

@@ -33,6 +33,15 @@ public class ConsumerOrdersController {
 
     @Resource
     private IOrdersManagerService ordersManagerService;
+    @Resource
+    private IOrdersCreateService ordersCreateService;
+
+    @ApiOperation("下单接口")
+    @PostMapping("/place")
+    public PlaceOrderResDTO place(@RequestBody PlaceOrderReqDTO placeOrderReqDTO) {
+        PlaceOrderResDTO orderResDTO = ordersCreateService.placeOrder(placeOrderReqDTO);
+        return orderResDTO;
+    }
 
 
     @GetMapping("/{id}")
@@ -52,5 +61,37 @@ public class ConsumerOrdersController {
     public List<OrderSimpleResDTO> consumerQueryList(@RequestParam(value = "ordersStatus", required = false) Integer ordersStatus,
                                                      @RequestParam(value = "sortBy", required = false) Long sortBy) {
         return ordersManagerService.consumerQueryList(UserContext.currentUserId(), ordersStatus, sortBy);
+    }
+
+    @PutMapping("/pay/{id}")
+    @ApiOperation("订单支付")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "id", value = "订单id", required = true, dataTypeClass = Long.class)
+    })
+    public OrdersPayResDTO pay(@PathVariable("id") Long id, @RequestBody OrdersPayReqDTO ordersPayReqDTO) {
+        OrdersPayResDTO pay = ordersCreateService.pay(id, ordersPayReqDTO);
+        return pay;
+    }
+
+    @GetMapping("/pay/{id}/result")
+    @ApiOperation("查询订单支付结果")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "id", value = "订单id", required = true, dataTypeClass = Long.class)
+    })
+    public OrdersPayResDTO payResult(@PathVariable("id") Long id) {
+        //支付结果
+        OrdersPayResDTO ordersPayResDTO = ordersCreateService.getPayResultFromTradServer(id);
+        return ordersPayResDTO;
+    }
+
+    @PutMapping("/cancel")
+    @ApiOperation("取消订单")
+    public void cancel(@RequestBody OrderCancelReqDTO orderCancelReqDTO) {
+        OrderCancelDTO orderCancelDTO = BeanUtil.toBean(orderCancelReqDTO, OrderCancelDTO.class);
+        CurrentUserInfo currentUserInfo = UserContext.currentUser();
+        orderCancelDTO.setCurrentUserId(currentUserInfo.getId());
+        orderCancelDTO.setCurrentUserName(currentUserInfo.getName());
+        orderCancelDTO.setCurrentUserType(currentUserInfo.getUserType());
+        ordersManagerService.cancel(orderCancelDTO);
     }
 }
