@@ -1,6 +1,6 @@
 package com.jzo2o.orders.manager.service.impl;
 
-import com.jzo2o.api.market.dto.CouponApi;
+import com.jzo2o.api.market.CouponApi;
 import com.jzo2o.api.market.dto.request.CouponUseBackReqDTO;
 import com.jzo2o.api.market.dto.request.CouponUseReqDTO;
 import com.jzo2o.common.model.PageResult;

@@ -2,7 +2,7 @@ package com.jzo2o.orders.manager.service.impl.client;
 
 import com.alibaba.csp.sentinel.annotation.SentinelResource;
 import com.alibaba.csp.sentinel.slots.block.BlockException;
-import com.jzo2o.api.market.dto.CouponApi;
+import com.jzo2o.api.market.CouponApi;
 import com.jzo2o.api.market.dto.response.AvailableCouponsResDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
