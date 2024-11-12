@@ -1,5 +1,8 @@
 package com.jzo2o.orders.manager.service.impl;
 
+import com.jzo2o.api.market.dto.CouponApi;
+import com.jzo2o.api.market.dto.request.CouponUseBackReqDTO;
+import com.jzo2o.api.market.dto.request.CouponUseReqDTO;
 import com.jzo2o.common.model.PageResult;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjectUtil;
@@ -14,10 +17,7 @@ import com.jzo2o.api.orders.dto.response.OrderSimpleResDTO;
 import com.jzo2o.common.constants.UserType;
 import com.jzo2o.common.enums.EnableStatusEnum;
 import com.jzo2o.common.expcetions.CommonException;
-import com.jzo2o.common.utils.BeanUtils;
-import com.jzo2o.common.utils.CollUtils;
-import com.jzo2o.common.utils.JsonUtils;
-import com.jzo2o.common.utils.ObjectUtils;
+import com.jzo2o.common.utils.*;
 import com.jzo2o.orders.base.config.OrderStateMachine;
 import com.jzo2o.orders.base.enums.OrderPayStatusEnum;
 import com.jzo2o.orders.base.enums.OrderStatusChangeEventEnum;
@@ -38,6 +38,7 @@ import com.jzo2o.orders.manager.service.IOrdersCreateService;
 import com.jzo2o.orders.manager.service.IOrdersManagerService;
 import com.jzo2o.orders.manager.service.IOrdersRefundService;
 import com.jzo2o.redis.helper.CacheHelper;
+import io.seata.spring.annotation.GlobalTransactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -86,6 +87,9 @@ public class OrdersManagerServiceImpl extends ServiceImpl<OrdersMapper, Orders> 
 
     @Resource
     private CacheHelper cacheHelper;
+
+    @Resource
+    private CouponApi couponApi;
 
 
     @Override
@@ -245,9 +249,20 @@ public class OrdersManagerServiceImpl extends ServiceImpl<OrdersMapper, Orders> 
         Integer ordersStatus = orders.getOrdersStatus();
 
         if(Objects.equals(OrderStatusEnum.NO_PAY.getStatus(), ordersStatus)){ //订单状态为待支付
-            owner.cancelByNoPay(orderCancelDTO);
+            if(orders.getDiscountAmount()!=null){
+                owner.cancelByNoPayWithCoupon(orderCancelDTO);
+            }
+            else{
+                owner.cancelByNoPay(orderCancelDTO);
+            }
+
         }else if(Objects.equals(OrderStatusEnum.DISPATCHING.getStatus(), ordersStatus)){ //订单状态为待服务
-            owner.cancelByDispatching(orderCancelDTO);
+            if(orders.getDiscountAmount()!=null){
+                owner.cancelByDispatchingWithCoupon(orderCancelDTO);
+            }
+            else{
+                owner.cancelByDispatching(orderCancelDTO);
+            }
             //新启动一个线程请求退款
             ordersHandler.requestRefundNewThread(orders.getId());
         }else{
@@ -255,10 +270,42 @@ public class OrdersManagerServiceImpl extends ServiceImpl<OrdersMapper, Orders> 
         }
     }
 
+    /**
+     * 派单中状态取消订单（有优惠券）
+     * @param orderCancelDTO
+     */
+    @GlobalTransactional
+    public void cancelByDispatchingWithCoupon(OrderCancelDTO orderCancelDTO) {
+        CouponUseReqDTO couponUseReqDTO = new CouponUseReqDTO();
+        couponUseReqDTO.setOrdersId(orderCancelDTO.getId());
+        Long couponId = couponApi.getCouponId(couponUseReqDTO);
+        CouponUseBackReqDTO couponUseBackReqDTO = new CouponUseBackReqDTO();
+        couponUseBackReqDTO.setId(couponId);
+        couponUseBackReqDTO.setOrdersId(orderCancelDTO.getId());
+        couponUseBackReqDTO.setUserId(orderCancelDTO.getUserId());
+        couponApi.useBack(couponUseBackReqDTO);
+        cancelByDispatching(orderCancelDTO);
+    }
+
+    /**
+     * 未支付状态取消订单（有优惠券）
+     * @param orderCancelDTO
+     */
+    @GlobalTransactional
+    public void cancelByNoPayWithCoupon(OrderCancelDTO orderCancelDTO) {
+        CouponUseReqDTO couponUseReqDTO = new CouponUseReqDTO();
+        couponUseReqDTO.setOrdersId(orderCancelDTO.getId());
+        Long couponId = couponApi.getCouponId(couponUseReqDTO);
+        CouponUseBackReqDTO couponUseBackReqDTO = new CouponUseBackReqDTO();
+        couponUseBackReqDTO.setId(couponId);
+        couponUseBackReqDTO.setOrdersId(orderCancelDTO.getId());
+        couponUseBackReqDTO.setUserId(orderCancelDTO.getUserId());
+        couponApi.useBack(couponUseBackReqDTO);
+        cancelByNoPay(orderCancelDTO);
+    }
+
     @Override
     public PageResult<OperationOrdersPageResDTO> operationQueryList(OrderPageQueryReqDTO orderPageQueryReqDTO) {
-        //1.构件查询条件
-
         LambdaQueryWrapper<Orders> queryWrapper = Wrappers.<Orders>lambdaQuery()
                 .eq(ObjectUtils.isNotNull(orderPageQueryReqDTO.getOrdersStatus()), Orders::getOrdersStatus, orderPageQueryReqDTO.getOrdersStatus())
                 .eq(ObjectUtils.isNotNull(orderPageQueryReqDTO.getRefundStatus()), Orders::getRefundStatus, orderPageQueryReqDTO.getRefundStatus())
@@ -345,6 +392,7 @@ public class OrdersManagerServiceImpl extends ServiceImpl<OrdersMapper, Orders> 
                 .build();
         orderStateMachine.changeStatus(null, orderCancelDTO.getId().toString(), OrderStatusChangeEventEnum.CLOSE_DISPATCHING_ORDER, orderSnapshotDTO);
         //添加退款记录
+
         OrdersRefund ordersRefund = new OrdersRefund();
         ordersRefund.setId(orderCancelDTO.getId());
         ordersRefund.setTradingOrderNo(orderCancelDTO.getTradingOrderNo());
